@@ -18,7 +18,10 @@ row-level security, same behaviour.
 | AI assistant: chat, cards, scope guard, usage limits, handoff to the calculator (`/api/fn/sendAiMessage`, `getAiPicker`, `sendAiChoice`, `resetAiSession`, `finalizeAiSelection`, `getAiAvailability`) | Done |
 | Internal sales report (PDF), sales notification, account emails, delivery ledger (`App\Reports`, `App\Mail`) | Done |
 | Scheduled jobs, health checks, report download (`/api/cron/*`, `/api/health`, `/api/files/report/{id}`) | Done |
-| Web pages served from Laravel | Not started |
+| Web pages: the original React screens, served by Laravel (`frontend/`, `App\Http\Controllers\WebController`) | Done |
+| Browser security headers, same-origin rule for `/api/fn/*` | Done |
+
+Deployment: [docs/deploy-cloudways.md](docs/deploy-cloudways.md).
 
 ## Database
 
@@ -145,6 +148,36 @@ The jobs are HTTP endpoints, so the server's crontab only needs `curl`. Without 
 `maintenance` clears finished AI usage windows, expired sessions and links, and email
 ledger rows older than 30 days. `/api/health` answers when the process is up and
 `/api/health/ready` when the database answers; neither gives any detail.
+
+## Web pages
+
+`frontend/` holds the screens of the original application, unchanged: the same routes,
+components, styles and package versions (`bun.lock`). Three things differ from the original
+front end, because there is no Node server behind it any more:
+
+- `src/lib/*.functions.ts` call the Laravel endpoints under `/api/fn/` with `fetch`
+  (`src/lib/server-fn.ts`) instead of TanStack server functions. Their answers are not typed.
+- The pages are built as a single-page app. Laravel answers every page address with the same
+  prerendered shell (`resources/web/shell.html`) and the browser renders the page. Addresses
+  that are not a page answer 404 with the shell, which shows "Page not found".
+- `src/routes/app-shell.tsx` is the build-only address the shell is prerendered at.
+
+The sign-in pages still use the same browser client against `/api/auth/*`.
+
+```sh
+cd frontend
+bun install --frozen-lockfile
+bun run build      # builds, then copies to public/assets and resources/web/shell.html
+bun run dev        # development server on :8080, /api proxied to `php artisan serve`
+```
+
+The built files are committed, so the server needs neither Node nor Bun. After changing
+anything in `frontend/`, run the build and commit the result with it.
+
+Every response carries the original security headers (`App\Http\Middleware\SecurityHeaders`).
+The `/api/fn/*` endpoints refuse cross-site calls the way the original server functions did
+(`App\Http\Middleware\SameOriginOnly`): `Sec-Fetch-Site` must be `same-origin`, or else the
+`Origin` or `Referer` must be this site. Laravel's own session, cookies and CSRF token are not used.
 
 ## Tests
 

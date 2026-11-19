@@ -130,7 +130,7 @@ final class ReportsTest extends TestCase
 
     private function send(string $method, string $uri, ?string $as = null, ?array $body = null, array $headers = [], ?array &$jar = null): TestResponse
     {
-        $server = ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.9'];
+        $server = ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.9', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
         foreach ($headers as $name => $value) {
             $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
         }

@@ -1,0 +1,1 @@
+var e=[{value:`core_lab`,label:`Core Lab`},{value:`poct`,label:`Point of Care Testing (POCT)`},{value:`molecular`,label:`Molecular Lab`},{value:`microbiology`,label:`Microbiology Lab`},{value:`genetics`,label:`Genetics Lab`}];function t(e,t=`AED`){return e==null?`—`:`${t} ${Number(e).toLocaleString(void 0,{minimumFractionDigits:2,maximumFractionDigits:2})}`}export{t as n,e as t};

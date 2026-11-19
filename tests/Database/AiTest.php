@@ -135,7 +135,7 @@ final class AiTest extends TestCase
 
     private function send(string $name, ?array $body, array &$jar = [], array $headers = []): TestResponse
     {
-        $server = ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.9'];
+        $server = ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.9', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
         foreach ($headers as $header => $value) {
             $server['HTTP_'.strtoupper(str_replace('-', '_', $header))] = $value;
         }

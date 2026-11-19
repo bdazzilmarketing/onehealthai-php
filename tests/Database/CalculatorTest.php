@@ -118,7 +118,7 @@ final class CalculatorTest extends TestCase
 
     private function send(string $uri, array $body, array $cookies = []): TestResponse
     {
-        $server = ['CONTENT_TYPE' => 'application/json'];
+        $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
         if ($cookies) {
             $server['HTTP_COOKIE'] = implode('; ', array_map(fn ($k, $v) => "{$k}={$v}", array_keys($cookies), $cookies));
         }
@@ -258,7 +258,7 @@ final class CalculatorTest extends TestCase
 
     public function test_catalog_endpoint_answers_json_without_prices(): void
     {
-        $response = $this->get('/api/fn/getCalculatorCatalog')->assertStatus(200);
+        $response = $this->get('/api/fn/getCalculatorCatalog', ['Sec-Fetch-Site' => 'same-origin'])->assertStatus(200);
         $this->assertSame('application/json', $response->headers->get('content-type'));
         $this->assertStringContainsString('no-store', $response->headers->get('cache-control'));
         $this->assertCount(2, $response->json('labs'));
