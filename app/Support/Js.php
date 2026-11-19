@@ -169,6 +169,71 @@ final class Js
         return intdiv(strlen(mb_convert_encoding($text, 'UTF-16LE', 'UTF-8')), 2);
     }
 
+    /** String.prototype.slice on UTF-16 code units (a split surrogate pair is dropped). */
+    public static function slice(string $text, int $start, ?int $end = null): string
+    {
+        if (mb_check_encoding($text, 'ASCII')) {
+            $length = strlen($text);
+            [$from, $to] = self::bounds($length, $start, $end);
+
+            return $to > $from ? substr($text, $from, $to - $from) : '';
+        }
+        $units = mb_convert_encoding($text, 'UTF-16BE', 'UTF-8');
+        [$from, $to] = self::bounds(intdiv(strlen($units), 2), $start, $end);
+        if ($to <= $from) {
+            return '';
+        }
+        $units = substr($units, $from * 2, ($to - $from) * 2);
+        if ((ord($units[0]) & 0xFC) === 0xDC) {
+            $units = substr($units, 2);
+        }
+        if ($units !== '' && (ord($units[strlen($units) - 2]) & 0xFC) === 0xD8) {
+            $units = substr($units, 0, -2);
+        }
+
+        return mb_convert_encoding($units, 'UTF-8', 'UTF-16BE');
+    }
+
+    /** @return array{int, int} */
+    private static function bounds(int $length, int $start, ?int $end): array
+    {
+        $from = $start < 0 ? max($length + $start, 0) : min($start, $length);
+        $end ??= $length;
+        $to = $end < 0 ? max($length + $end, 0) : min($end, $length);
+
+        return [$from, $to];
+    }
+
+    /** String.prototype.toLowerCase */
+    public static function lower(string $text): string
+    {
+        return mb_strtolower($text, 'UTF-8');
+    }
+
+    /** String.prototype.normalize("NFKC") */
+    public static function nfkc(string $text): string
+    {
+        $normalized = \Normalizer::normalize($text, \Normalizer::FORM_KC);
+
+        return $normalized === false ? $text : $normalized;
+    }
+
+    /** text.split(search).join(replacement) */
+    public static function replaceAll(string $text, string $search, string $replacement): string
+    {
+        if ($search === '') {
+            return implode($replacement, mb_str_split($text, 1, 'UTF-8'));
+        }
+
+        return str_replace($search, $replacement, $text);
+    }
+
+    /** number.toLocaleString("en-US") for whole numbers. */
+    public static function grouped(int|float $value): string
+    {
+        return number_format((float) $value, 0, '.', ',');
+    }
+
     /** new Date().toISOString() */
     public static function isoNow(): string
     {

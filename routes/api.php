@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalculatorController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,12 @@ Route::match(['GET', 'POST'], '/auth/{path?}', AuthController::class)->where('pa
 // Public calculator. Each /api/fn/<name> replaces the server function of that name.
 Route::get('/fn/getCalculatorCatalog', [CalculatorController::class, 'catalog']);
 Route::post('/fn/calculateEstimate', [CalculatorController::class, 'estimate']);
+
+// AI assistant. The visitor is identified by a signed cookie; limits are enforced in the database.
+Route::get('/fn/getAiAvailability', [AiController::class, 'getAiAvailability']);
+foreach (['sendAiMessage', 'getAiPicker', 'sendAiChoice', 'resetAiSession', 'finalizeAiSelection'] as $name) {
+    Route::post("/fn/{$name}", [AiController::class, $name]);
+}
 
 // Admin Portal. Signed-in staff only; every handler then checks the caller's role.
 Route::middleware('staff:session')->group(function () {

@@ -4,6 +4,11 @@ namespace App\Providers;
 
 use App\Admin\AdminData;
 use App\Admin\AdminUsers;
+use App\Ai\Classifier;
+use App\Ai\OpenAi;
+use App\Ai\QaDiagnostics;
+use App\Ai\Quota;
+use App\Ai\Reviewer;
 use App\Auth\AuthConfig;
 use App\Auth\AuthService;
 use App\Auth\Identity;
@@ -41,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AdminUsers::class, fn ($app) => new AdminUsers(
             $app->make(Db::class), $app->make(AuthService::class), $app->make(Audit::class), $app->make(TemplateMailer::class), $env,
         ));
+        $this->app->singleton(Quota::class, fn ($app) => new Quota($app->make(Db::class), $env));
+        $this->app->singleton(OpenAi::class, fn ($app) => new OpenAi($app->make(Db::class), $env));
+        $this->app->singleton(Classifier::class, fn () => new Classifier($env));
+        $this->app->singleton(Reviewer::class, fn () => new Reviewer($env));
+        $this->app->singleton(QaDiagnostics::class, fn () => new QaDiagnostics($env));
         // The file store is resolved on first use, so a missing storage setting only affects uploads.
         $this->app->singleton(AdminData::class, fn ($app) => new AdminData($app->make(Audit::class), fn () => $app->make(FileStore::class), $env));
     }

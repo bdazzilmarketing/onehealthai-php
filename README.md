@@ -15,7 +15,7 @@ row-level security, same behaviour.
 | Calculator: public catalog, pricing engine, lead sessions, submissions (`/api/fn/getCalculatorCatalog`, `/api/fn/calculateEstimate`) | Done |
 | Admin panel: dashboard, Excel import, dataset versions and publishing, settings, AI prompt versions, audit log, submissions, sales recipients, AI limits (`/api/fn/*`) | Done |
 | Private file storage (local or S3-compatible), signed report links | Done |
-| AI chat and cards | Not started |
+| AI assistant: chat, cards, scope guard, usage limits, handoff to the calculator (`/api/fn/sendAiMessage`, `getAiPicker`, `sendAiChoice`, `resetAiSession`, `finalizeAiSelection`, `getAiAvailability`) | Done |
 | Reports (PDF), email, scheduled jobs | Not started. Until then account emails are not sent, and `regenerateSubmissionReport` / `resendSalesNotification` are not served |
 
 ## Database
@@ -86,6 +86,28 @@ the same JSON. An error the original threw to the browser is answered as
 | `FILE_STORE_S3_ENDPOINT`, `FILE_STORE_S3_BUCKET`, `FILE_STORE_S3_REGION`, `FILE_STORE_S3_ACCESS_KEY_ID`, `FILE_STORE_S3_SECRET_ACCESS_KEY` | `s3`: any S3-compatible service, path-style, Signature Version 4 |
 
 `MAKE_WEBHOOK_URL` and `MAKE_WEBHOOK_SECRET` are only used by the manual "resend to Make" action.
+
+## AI assistant
+
+`App\Ai` is a line-for-line port of the original assistant. A typed message passes, in this order:
+input limits, the built-in scope rules, one quota reservation in the database
+(`ai_reserve_quota`), a classifier call, the main call, validation of the structured answer
+against the published catalog, a final check of the assembled reply and an independent
+reviewer call. Any failure answers with a fixed safe message and nothing is saved. Card
+clicks never call OpenAI. The assistant is never given a price and cannot return one.
+
+| Variable | Meaning |
+| --- | --- |
+| `OPENAI_API_KEY` | Unset: the assistant reports itself unavailable and Manual Mode keeps working |
+| `AI_QUOTA_HASH_SECRET` | At least 32 characters. Hashes visitor and network identifiers for the limits. Unset: the assistant fails closed |
+| `AI_QA_DIAGNOSTICS_TOKEN`, `AI_QA_DIAGNOSTICS_EXPIRES_AT` | Optional content-free diagnostics for QA runs (ISO 8601 expiry, at most 72 hours ahead) |
+
+The model and the system prompt come from the active prompt version in the admin panel.
+The texts in `app/Ai/Data/generated.php` (rules, instructions, fixed replies) are copied
+mechanically from the original and are not edited by hand.
+
+`tests/Unit/AiParityTest.php` replays about 48,000 recorded checks from the original code
+(messages, model answers, card walks, provider payloads) and requires identical results.
 
 ## Tests
 

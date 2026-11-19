@@ -17,6 +17,8 @@ $names = [
     // Integrations shown on the admin dashboard
     'OPENAI_API_KEY', 'EMAIL_DRIVER', 'SMTP_HOST', 'GRAPH_TENANT_ID', 'GRAPH_CLIENT_ID',
     'GRAPH_CLIENT_SECRET', 'GRAPH_SENDER', 'CRON_SECRET', 'MAKE_WEBHOOK_URL', 'MAKE_WEBHOOK_SECRET',
+    // AI assistant: usage-limit hashing and optional content-free QA diagnostics
+    'AI_QUOTA_HASH_SECRET', 'AI_QA_DIAGNOSTICS_TOKEN', 'AI_QA_DIAGNOSTICS_EXPIRES_AT',
     // Database schema installation (console only)
     'MIGRATION_DATABASE_URL',
 ];
