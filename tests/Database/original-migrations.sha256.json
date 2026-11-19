@@ -1,0 +1,11 @@
+{
+  "0000_roles.bootstrap.sql": "2c46394f46b1e491dcda64de949e762db3539c44eb74c470484b1fa3d72d887a",
+  "0001_auth.sql": "dfce7b1f884d7eb8fb42c1c383f4290006030ae20f28b80eca0d775038a5f608",
+  "0002_app_schema.sql": "7baa7c1f995f4b4a815eec65c71d78ceb9b62c5a44b2687ba41dcd29b7387c55",
+  "0003_grants.sql": "23de444ac2e8efcec847e7e5c9e45659dbe4c5f64c24960200745f9d29095e36",
+  "0004_seed_config.sql": "9cc0e7e45e6ba3402af71f220b594fcda3cb4c7af4dee7fd56c2c1039a05d1ae",
+  "0005_auth_role.bootstrap.sql": "963957efae1ef56fb2ec79cb2f5fd578fc735b1c1a355f757e95fbfed29d5b69",
+  "0006_auth_library.sql": "692ad4c69b8d3d83ae85130ba18c06b433d2304c56e92f917dc23d07baacd6cf",
+  "0007_supporting_services.sql": "6ae8ae0bbbfd7a1264570f3dd87ca4fcfd53d697f7e9e5134978655076659976",
+  "0008_super_admin_staff_access.sql": "888b066203885bfeb7528b6499b8c45a27e14335088bcdc1c310370519941978"
+}
