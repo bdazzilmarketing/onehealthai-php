@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalculatorController;
 use Illuminate\Support\Facades\Route;
@@ -11,3 +12,24 @@ Route::match(['GET', 'POST'], '/auth/{path?}', AuthController::class)->where('pa
 // Public calculator. Each /api/fn/<name> replaces the server function of that name.
 Route::get('/fn/getCalculatorCatalog', [CalculatorController::class, 'catalog']);
 Route::post('/fn/calculateEstimate', [CalculatorController::class, 'estimate']);
+
+// Admin Portal. Signed-in staff only; every handler then checks the caller's role.
+Route::middleware('staff:session')->group(function () {
+    Route::get('/fn/getSession', [AdminController::class, 'getSession']);
+    Route::post('/fn/recordSignIn', [AdminController::class, 'recordSignIn']);
+});
+Route::middleware('staff')->group(function () {
+    foreach ([
+        'listUsers', 'getDashboard', 'listVersions', 'getAdminSettings', 'listPromptVersions', 'getAuditLog',
+        'listCalculatorSubmissions', 'listSalesRecipients', 'getAiQuotaOverview',
+    ] as $name) {
+        Route::get("/fn/{$name}", [AdminController::class, $name]);
+    }
+    foreach ([
+        'createUser', 'setUserEnabled', 'sendUserAccountEmail', 'uploadWorkbook', 'getVersionDetail', 'getPublishedData',
+        'publishVersionFn', 'saveSetting', 'savePromptVersion', 'activatePromptVersion', 'getCalculatorSubmission',
+        'retryMakeDelivery', 'addSalesRecipient', 'removeSalesRecipient', 'getSubmissionReportUrl', 'updateAiQuotaSettings',
+    ] as $name) {
+        Route::post("/fn/{$name}", [AdminController::class, $name]);
+    }
+});

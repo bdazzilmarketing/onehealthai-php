@@ -13,9 +13,10 @@ row-level security, same behaviour.
 | Per-transaction user/service context (`App\Database\Db`) | Done |
 | Staff login, two-step sign-in, sessions, role guards (`App\Auth`, `/api/auth/*`) | Done |
 | Calculator: public catalog, pricing engine, lead sessions, submissions (`/api/fn/getCalculatorCatalog`, `/api/fn/calculateEstimate`) | Done |
-| Admin panel, Excel import | Not started |
+| Admin panel: dashboard, Excel import, dataset versions and publishing, settings, AI prompt versions, audit log, submissions, sales recipients, AI limits (`/api/fn/*`) | Done |
+| Private file storage (local or S3-compatible), signed report links | Done |
 | AI chat and cards | Not started |
-| Reports, email, scheduled jobs | Not started |
+| Reports (PDF), email, scheduled jobs | Not started. Until then account emails are not sent, and `regenerateSubmissionReport` / `resendSalesNotification` are not served |
 
 ## Database
 
@@ -69,6 +70,22 @@ holds results recorded from the original TypeScript code, and
 Each original server function `name` is served at `/api/fn/name` and answers
 the same JSON. An error the original threw to the browser is answered as
 `500 {"message": ...}`.
+
+## Admin panel
+
+`App\Http\Controllers\AdminController` serves the original admin server functions, one endpoint each, at `/api/fn/<name>` (GET for reads without input, POST with the input as the JSON body). Every endpoint sits behind the `staff` guard, checks the caller's role first (`App\Auth\Roles`), and then reads or writes in the caller's own database context, so row-level security decides again. Answers are the same JSON as before: numeric columns as numbers, timestamps as `2026-01-31T09:30:00.123+00:00`, JSON columns as objects (`Tx::rows`).
+
+**Excel import.** `App\Import\XlsxReader` reads `.xlsx` files (sheets, shared strings, used range, cell values) with the same rules as the spreadsheet library of the original app, and `App\Import\WorkbookParser` is the port of its parser and validation engine. `tests/Fixtures/workbook-parser-parity.json` holds the output of the original parser for the workbooks in `tests/Fixtures/workbooks`; the PHP parser must produce the same bytes. Old-format `.xls` files are not accepted (decided 2026-11-19): they are stored as a failed version with the message "The workbook could not be read".
+
+**File storage.** Uploaded workbooks (and later the internal report PDFs) go to private storage, never a public folder:
+
+| Variable | Meaning |
+| --- | --- |
+| `FILE_STORE_DRIVER` | `local` or `s3`. Unset: uploads fail closed |
+| `FILE_STORE_PATH` | `local`: directory outside the web root that survives deploys |
+| `FILE_STORE_S3_ENDPOINT`, `FILE_STORE_S3_BUCKET`, `FILE_STORE_S3_REGION`, `FILE_STORE_S3_ACCESS_KEY_ID`, `FILE_STORE_S3_SECRET_ACCESS_KEY` | `s3`: any S3-compatible service, path-style, Signature Version 4 |
+
+`MAKE_WEBHOOK_URL` and `MAKE_WEBHOOK_SECRET` are only used by the manual "resend to Make" action.
 
 ## Tests
 

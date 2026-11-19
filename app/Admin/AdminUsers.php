@@ -8,8 +8,8 @@ use App\Auth\Crypto;
 use App\Database\Db;
 use App\Database\Tx;
 use App\Mail\TemplateMailer;
+use App\Support\AppError;
 use App\Support\Audit;
-use RuntimeException;
 
 /**
  * Staff account administration (the user-management part of
@@ -82,7 +82,7 @@ final class AdminUsers
         $env = $this->env;
         $value = $env('ADMIN_SITE_URL') ?: ($env('AUTH_BASE_URL') ?: $env('PUBLIC_SITE_URL'));
         if (! $value) {
-            throw new RuntimeException('ADMIN_SITE_URL is not configured');
+            throw new AppError('ADMIN_SITE_URL is not configured');
         }
 
         return AuthConfig::origin($value);
@@ -107,7 +107,7 @@ final class AdminUsers
         }
         $fail = function (string $reason, string $message) use ($eventType, $actorId, $actorEmail, $targetUserId, &$target): never {
             $this->audit->record($eventType, $actorId, $actorEmail, ['target_user' => $targetUserId, 'email' => $target['email'] ?? null, 'result' => 'failed', 'reason' => $reason]);
-            throw new RuntimeException($message);
+            throw new AppError($message);
         };
 
         if ($target === null || ! $target['email']) {
@@ -149,26 +149,26 @@ final class AdminUsers
     {
         $role = $input['role'] ?? 'admin';
         if (! in_array($role, ['admin', 'security_auditor'], true)) {
-            throw new RuntimeException('Unable to create the administrator');
+            throw new AppError('Unable to create the administrator');
         }
         $email = strtolower(trim($input['email']));
         $temporary = $input['temporaryPassword'] ?? null;
         if (! $input['sendInvite'] && (! $temporary || mb_strlen($temporary) < 12)) {
-            throw new RuntimeException('A temporary password of at least 12 characters is required');
+            throw new AppError('A temporary password of at least 12 characters is required');
         }
 
         $userId = Crypto::uuid();
         try {
             $this->db->withServiceContext(function (Tx $tx) use ($email, $userId, $role) {
                 if ($tx->first('select 1 from auth.users where email = ?', [$email]) !== null) {
-                    throw new RuntimeException('An account with this email already exists');
+                    throw new AppError('An account with this email already exists');
                 }
                 $tx->execute('insert into auth.users (id, email) values (?, ?)', [$userId, $email]);
                 $tx->execute('insert into public.profiles (id, email) values (?, ?)', [$userId, $email]);
                 $tx->execute('insert into public.user_roles (user_id, role) values (?, ?)', [$userId, $role]);
             });
         } catch (\Throwable $error) {
-            throw new RuntimeException($error->getMessage() === 'An account with this email already exists' ? $error->getMessage() : 'Unable to create the administrator');
+            throw new AppError($error->getMessage() === 'An account with this email already exists' ? $error->getMessage() : 'Unable to create the administrator');
         }
 
         $undo = function () use ($userId) {
@@ -180,14 +180,14 @@ final class AdminUsers
         if ($input['sendInvite']) {
             if (! $this->deliverAccountLink($userId, $email, 'invite')) {
                 $undo();
-                throw new RuntimeException('Unable to invite the administrator');
+                throw new AppError('Unable to invite the administrator');
             }
         } else {
             try {
                 $this->auth->setInitialPassword($userId, $temporary);
             } catch (\Throwable) {
                 $undo();
-                throw new RuntimeException('Unable to create the administrator');
+                throw new AppError('Unable to create the administrator');
             }
         }
 
@@ -206,14 +206,14 @@ final class AdminUsers
     {
         if (! $enabled) {
             if ($targetUserId === $actorId) {
-                throw new RuntimeException('You cannot disable your own account');
+                throw new AppError('You cannot disable your own account');
             }
             $users = $this->list();
             foreach ($users as $user) {
                 if ($user['id'] === $targetUserId && $user['role'] === 'super_admin') {
                     $activeSupers = array_filter($users, fn ($u) => $u['role'] === 'super_admin' && $u['status'] === 'active');
                     if (count($activeSupers) <= 1) {
-                        throw new RuntimeException('The last active Super Admin cannot be disabled');
+                        throw new AppError('The last active Super Admin cannot be disabled');
                     }
                 }
             }
@@ -237,7 +237,7 @@ final class AdminUsers
             $updated = false;
         }
         if (! $updated) {
-            throw new RuntimeException('Unable to update the administrator account');
+            throw new AppError('Unable to update the administrator account');
         }
 
         $this->audit->record($enabled ? 'admin_user.enable' : 'admin_user.disable', $actorId, $actorEmail, ['target_user' => $targetUserId]);
@@ -273,10 +273,10 @@ final class AdminUsers
             [$targetId, $actorId, ...self::ACCOUNT_EMAIL_EVENTS],
         ));
         if (($counts['target_count'] ?? 0) >= self::PER_TARGET_PER_HOUR) {
-            throw new RuntimeException('Too many emails were sent to this account in the last hour. Please try again later.');
+            throw new AppError('Too many emails were sent to this account in the last hour. Please try again later.');
         }
         if (($counts['actor_count'] ?? 0) >= self::PER_ACTOR_PER_HOUR) {
-            throw new RuntimeException('You have sent too many account emails in the last hour. Try again later.');
+            throw new AppError('You have sent too many account emails in the last hour. Try again later.');
         }
     }
 

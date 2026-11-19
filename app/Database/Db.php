@@ -95,6 +95,21 @@ final class Db
         });
     }
 
+    /** The database's own message for a failed statement (what RAISE EXCEPTION said), without driver decoration. */
+    public static function errorMessage(Throwable $error): string
+    {
+        $text = $error instanceof \PDOException && is_string($error->errorInfo[2] ?? null) ? $error->errorInfo[2] : $error->getMessage();
+        $text = preg_replace('/^(ERROR|FATAL|PANIC):\s+/', '', $text);
+
+        return preg_split('/\n(DETAIL|HINT|CONTEXT|LINE \d+|QUERY|PL\/pgSQL function)\b/', $text)[0];
+    }
+
+    /** The five-character SQLSTATE of a failed statement, or null. */
+    public static function errorCode(Throwable $error): ?string
+    {
+        return $error instanceof \PDOException && is_string($error->errorInfo[0] ?? null) ? $error->errorInfo[0] : null;
+    }
+
     private function transaction(callable $fn): mixed
     {
         $pdo = ($this->pdo)();

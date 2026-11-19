@@ -20,7 +20,7 @@ final class Audit
         try {
             $this->db->withServiceContext(fn (Tx $tx) => $tx->execute(
                 'insert into public.audit_log (event_type, actor_id, actor_email, details) values (?, ?, ?, ?::jsonb)',
-                [$eventType, $actorId, $actorEmail, json_encode((object) $details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)],
+                [$eventType, $actorId, $actorEmail, Js::stringify((object) $details)],
             ));
         } catch (\Throwable $error) {
             error_log('[audit] write failed '.json_encode(['event_type' => $eventType, 'code' => $error->getCode()]));
