@@ -15,6 +15,8 @@ use Throwable;
  *                                  and auth.uid() see that user.
  *   withServiceContext($fn)        SET LOCAL ROLE onehealth_service (bypasses
  *                                  row-level security).
+ *   withAuthContext($fn)           SET LOCAL ROLE onehealth_auth (authentication
+ *                                  tables only).
  *
  * Both settings are transaction-local: they end with COMMIT or ROLLBACK. The
  * runtime login is NOINHERIT and has no privileges of its own, so a query that
@@ -35,6 +37,7 @@ final class Db
 
     /**
      * @template T
+     *
      * @param  callable(Tx): T  $fn
      * @return T
      */
@@ -57,6 +60,7 @@ final class Db
      * Trusted server work (row-level security bypassed). Callers authorize first.
      *
      * @template T
+     *
      * @param  callable(Tx): T  $fn
      * @return T
      */
@@ -65,6 +69,26 @@ final class Db
         return $this->transaction(function (PDO $pdo) use ($fn) {
             $pdo->exec('SET LOCAL ROLE onehealth_service');
             // Explicitly no user, whatever a misconfigured server default might say.
+            $pdo->exec("select set_config('app.user_id', '', true)");
+
+            return $fn(new Tx($pdo));
+        });
+    }
+
+    /**
+     * The authentication tables (sessions, credentials, link tokens, two-step
+     * secrets, rate limits) as role onehealth_auth, which can touch those
+     * tables and nothing else. Only App\Auth uses this.
+     *
+     * @template T
+     *
+     * @param  callable(Tx): T  $fn
+     * @return T
+     */
+    public function withAuthContext(callable $fn): mixed
+    {
+        return $this->transaction(function (PDO $pdo) use ($fn) {
+            $pdo->exec('SET LOCAL ROLE onehealth_auth');
             $pdo->exec("select set_config('app.user_id', '', true)");
 
             return $fn(new Tx($pdo));
