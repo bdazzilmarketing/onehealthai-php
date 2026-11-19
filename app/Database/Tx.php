@@ -2,6 +2,7 @@
 
 namespace App\Database;
 
+use App\Support\Js;
 use PDO;
 
 /**
@@ -49,7 +50,7 @@ final class Tx
                 is_int($value) => PDO::PARAM_INT,
                 default => PDO::PARAM_STR,
             };
-            $statement->bindValue($index + 1, is_float($value) ? (string) $value : $value, $type);
+            $statement->bindValue($index + 1, is_float($value) ? Js::number($value) : $value, $type);
         }
         $statement->execute();
 

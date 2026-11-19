@@ -12,7 +12,8 @@ row-level security, same behaviour.
 | Migration runner (`php artisan onehealth:migrate`) | Done |
 | Per-transaction user/service context (`App\Database\Db`) | Done |
 | Staff login, two-step sign-in, sessions, role guards (`App\Auth`, `/api/auth/*`) | Done |
-| Calculator, admin panel, Excel import | Not started |
+| Calculator: public catalog, pricing engine, lead sessions, submissions (`/api/fn/getCalculatorCatalog`, `/api/fn/calculateEstimate`) | Done |
+| Admin panel, Excel import | Not started |
 | AI chat and cards | Not started |
 | Reports, email, scheduled jobs | Not started |
 
@@ -54,6 +55,20 @@ rate limits). Only the endpoints the admin portal uses are reachable.
   Argon2id at that user's next sign-in.
 - The caller's address (rate limiting, session records) comes only from the
   trusted resolver configured by `TRUSTED_PROXY_MODE`.
+
+## Calculator
+
+`App\Calculator\CalculationEngine` is the single calculation implementation
+(`equal_distribution_v1`). Prices are read server-side from the published
+dataset and never appear in a response; the browser receives only the public
+range. Arithmetic, rounding, number formatting and the stored JSON follow the
+original exactly (`App\Support\Js`): `tests/Fixtures/calculator-parity.json`
+holds results recorded from the original TypeScript code, and
+`tests/Unit/CalculatorParityTest.php` requires the same bytes.
+
+Each original server function `name` is served at `/api/fn/name` and answers
+the same JSON. An error the original threw to the browser is answered as
+`500 {"message": ...}`.
 
 ## Tests
 

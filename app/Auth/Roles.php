@@ -4,6 +4,7 @@ namespace App\Auth;
 
 use App\Database\Tx;
 use App\Database\UserScope;
+use App\Support\AppError;
 
 /**
  * Role gates for the Admin Portal (port of the auth/roles part of
@@ -31,7 +32,7 @@ final class Roles
     public static function requireAdmin(UserScope $db, string $userId): void
     {
         if (! self::isUserAdmin($db, $userId)) {
-            throw new \RuntimeException('Forbidden: administrator role required');
+            throw new AppError('Forbidden: administrator role required');
         }
     }
 
@@ -42,7 +43,7 @@ final class Roles
             return;
         }
         if (! self::isSecurityAuditor($db, $userId)) {
-            throw new \RuntimeException('Forbidden: administrator role required');
+            throw new AppError('Forbidden: administrator role required');
         }
     }
 
@@ -53,14 +54,14 @@ final class Roles
             return;
         }
         if (! self::isSecurityAuditor($db, $userId)) {
-            throw new \RuntimeException('Forbidden: super administrator role required');
+            throw new AppError('Forbidden: super administrator role required');
         }
     }
 
     public static function requireSuperAdmin(UserScope $db, string $userId): void
     {
         if (! self::isSuperAdmin($db, $userId)) {
-            throw new \RuntimeException('Forbidden: super administrator role required');
+            throw new AppError('Forbidden: super administrator role required');
         }
     }
 
@@ -69,7 +70,7 @@ final class Roles
         try {
             return (bool) $db->run(fn (Tx $tx) => $tx->value($sql, [$userId]));
         } catch (\Throwable) {
-            throw new \RuntimeException('Unable to verify administrator role');
+            throw new AppError('Unable to verify administrator role');
         }
     }
 }
