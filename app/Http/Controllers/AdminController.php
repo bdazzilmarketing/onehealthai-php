@@ -12,6 +12,7 @@ use App\Database\Db;
 use App\Database\Tx;
 use App\Http\Support\Input;
 use App\Http\Support\ServerFn;
+use App\Reports\SalesReports;
 use App\Storage\SignedLinks;
 use App\Submissions\SubmissionAdmin;
 use App\Support\AppError;
@@ -36,6 +37,7 @@ final class AdminController
         private readonly AiQuotaAdmin $quota,
         private readonly Audit $audit,
         private readonly SignedLinks $links,
+        private readonly SalesReports $reports,
     ) {}
 
     // --------------------------------------------------------------- session
@@ -379,6 +381,28 @@ final class AdminController
             }
 
             return ['url' => $this->links->signedReportPath($row['id'], $download)];
+        });
+    }
+
+    /** Builds the internal report again from the stored snapshot and stores it over the previous one. */
+    public function regenerateSubmissionReport(Request $request): Response
+    {
+        return self::answer($request, function (Staff $staff, Input $input) {
+            $id = $input->guid('id');
+            Roles::requireAdmin($staff->db, $staff->userId);
+
+            return $this->reports->regenerate($id, $staff->userId, $staff->email);
+        });
+    }
+
+    /** Sends the sales notification again to the active recipients. */
+    public function resendSalesNotification(Request $request): Response
+    {
+        return self::answer($request, function (Staff $staff, Input $input) {
+            $id = $input->guid('id');
+            Roles::requireAdmin($staff->db, $staff->userId);
+
+            return $this->reports->resend($id, $staff->userId, $staff->email);
         });
     }
 

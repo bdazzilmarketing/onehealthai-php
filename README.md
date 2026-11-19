@@ -16,7 +16,9 @@ row-level security, same behaviour.
 | Admin panel: dashboard, Excel import, dataset versions and publishing, settings, AI prompt versions, audit log, submissions, sales recipients, AI limits (`/api/fn/*`) | Done |
 | Private file storage (local or S3-compatible), signed report links | Done |
 | AI assistant: chat, cards, scope guard, usage limits, handoff to the calculator (`/api/fn/sendAiMessage`, `getAiPicker`, `sendAiChoice`, `resetAiSession`, `finalizeAiSelection`, `getAiAvailability`) | Done |
-| Reports (PDF), email, scheduled jobs | Not started. Until then account emails are not sent, and `regenerateSubmissionReport` / `resendSalesNotification` are not served |
+| Internal sales report (PDF), sales notification, account emails, delivery ledger (`App\Reports`, `App\Mail`) | Done |
+| Scheduled jobs, health checks, report download (`/api/cron/*`, `/api/health`, `/api/files/report/{id}`) | Done |
+| Web pages served from Laravel | Not started |
 
 ## Database
 
@@ -108,6 +110,41 @@ mechanically from the original and are not edited by hand.
 
 `tests/Unit/AiParityTest.php` replays about 48,000 recorded checks from the original code
 (messages, model answers, card walks, provider payloads) and requires identical results.
+
+## Reports and email
+
+A new submission is stored with its report and notification marked pending. After the
+response has been sent, the internal PDF is built from the stored snapshot, saved to private
+storage and announced to the active sales recipients. Each step is claimed in the database,
+so repeated or concurrent triggers never produce a second report or a second normal
+notification; anything that fails is retried by the recovery job (up to five automatic
+attempts, backing off 5, 10, 20 and 40 minutes).
+
+The PDF is drawn by `App\Reports\SalesReportPdf` with the standard Helvetica metrics and
+lays out every line where the original did. The email templates produce the same HTML and
+text. `tests/Unit/ReportParityTest.php` checks both against output recorded from the original.
+
+| Variable | Meaning |
+| --- | --- |
+| `EMAIL_DRIVER` | `smtp` or `graph`. `log` is for development and refused in production. Unset: sending fails closed |
+| `EMAIL_FROM` | Sender shown to recipients |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE` | `smtp`: STARTTLS is required unless `SMTP_SECURE=true` (implicit TLS, port 465) |
+| `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_SENDER` | `graph`: Microsoft Graph with the Mail.Send application permission |
+| `EMAIL_ALLOWED_RECIPIENTS` | Staging: only these addresses or `@domain` entries can receive mail |
+
+## Scheduled jobs and health checks
+
+The jobs are HTTP endpoints, so the server's crontab only needs `curl`. Without a
+`CRON_SECRET` of at least 32 characters every call answers 404.
+
+```cron
+*/5 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/sales-report-recovery
+7 * * * *   curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/maintenance
+```
+
+`maintenance` clears finished AI usage windows, expired sessions and links, and email
+ledger rows older than 30 days. `/api/health` answers when the process is up and
+`/api/health/ready` when the database answers; neither gives any detail.
 
 ## Tests
 

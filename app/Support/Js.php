@@ -234,6 +234,50 @@ final class Js
         return number_format((float) $value, 0, '.', ',');
     }
 
+    /**
+     * number.toLocaleString("en-US", { minimumFractionDigits, maximumFractionDigits }):
+     * the shortest decimal form of the number, rounded half away from zero.
+     */
+    public static function localeNumber(float|int $value, int $minFraction = 0, int $maxFraction = 3): string
+    {
+        $value = (float) $value;
+        if (is_nan($value)) {
+            return 'NaN';
+        }
+        if (is_infinite($value)) {
+            return $value > 0 ? '∞' : '-∞';
+        }
+        $digits = self::number(abs($value));
+        if (stripos($digits, 'e') !== false) {
+            $digits = rtrim(rtrim(number_format(abs($value), 30, '.', ''), '0'), '.');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $digits, 2), 2, '');
+        if (strlen($fraction) > $maxFraction) {
+            $roundUp = $fraction[$maxFraction] >= '5';
+            $kept = $whole.substr($fraction, 0, $maxFraction);
+            if ($roundUp) {
+                $i = strlen($kept) - 1;
+                while ($i >= 0 && $kept[$i] === '9') {
+                    $kept[$i] = '0';
+                    $i--;
+                }
+                if ($i >= 0) {
+                    $kept[$i] = (string) ((int) $kept[$i] + 1);
+                } else {
+                    $kept = '1'.$kept;
+                }
+            }
+            $whole = substr($kept, 0, strlen($kept) - $maxFraction);
+            $fraction = $maxFraction > 0 ? substr($kept, -$maxFraction) : '';
+        }
+        $fraction = rtrim($fraction, '0');
+        $fraction = str_pad($fraction, $minFraction, '0');
+        $whole = ltrim($whole, '0');
+        $grouped = strrev(implode(',', str_split(strrev($whole === '' ? '0' : $whole), 3)));
+
+        return ($value < 0 ? '-' : '').$grouped.($fraction === '' ? '' : '.'.$fraction);
+    }
+
     /** new Date().toISOString() */
     public static function isoNow(): string
     {

@@ -69,7 +69,7 @@ final class AuthTest extends TestCase
         self::$identity = new Identity($db, self::$auth);
         $mailer = new class implements TemplateMailer
         {
-            public function send(string $template, string $to, array $templateData): bool
+            public function send(string $template, string $to, array $templateData, ?string $idempotencyKey = null): bool
             {
                 AuthTest::$sent[] = ['to' => $to, 'data' => $templateData];
 

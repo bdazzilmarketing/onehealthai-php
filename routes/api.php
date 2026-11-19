@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalculatorController;
+use App\Http\Controllers\SystemController;
 use Illuminate\Support\Facades\Route;
 
 // Staff authentication endpoints (sign-in, sign-out, session, password links,
@@ -36,7 +37,19 @@ Route::middleware('staff')->group(function () {
         'createUser', 'setUserEnabled', 'sendUserAccountEmail', 'uploadWorkbook', 'getVersionDetail', 'getPublishedData',
         'publishVersionFn', 'saveSetting', 'savePromptVersion', 'activatePromptVersion', 'getCalculatorSubmission',
         'retryMakeDelivery', 'addSalesRecipient', 'removeSalesRecipient', 'getSubmissionReportUrl', 'updateAiQuotaSettings',
+        'regenerateSubmissionReport', 'resendSalesNotification',
     ] as $name) {
         Route::post("/fn/{$name}", [AdminController::class, $name]);
     }
 });
+
+// Health checks for the host and uptime monitors.
+Route::match(['GET', 'HEAD'], '/health', [SystemController::class, 'health']);
+Route::match(['GET', 'HEAD'], '/health/ready', [SystemController::class, 'ready']);
+
+// Scheduled jobs, called by the server's crontab with the CRON_SECRET bearer token.
+Route::match(['GET', 'POST'], '/cron/maintenance', [SystemController::class, 'maintenance']);
+Route::match(['GET', 'POST'], '/cron/sales-report-recovery', [SystemController::class, 'salesReportRecovery']);
+
+// Internal report PDF: a short-lived signed link plus a signed-in admin viewer.
+Route::get('/files/report/{id}', [SystemController::class, 'reportDownload']);
