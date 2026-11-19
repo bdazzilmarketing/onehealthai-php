@@ -15,6 +15,8 @@ use Throwable;
  *                                  and auth.uid() see that user.
  *   withServiceContext($fn)        SET LOCAL ROLE onehealth_service (bypasses
  *                                  row-level security).
+ *   withAuthContext($fn)           SET LOCAL ROLE onehealth_auth (authentication
+ *                                  tables only).
  *
  * Both settings are transaction-local: they end with COMMIT or ROLLBACK. The
  * runtime login is NOINHERIT and has no privileges of its own, so a query that
@@ -35,6 +37,7 @@ final class Db
 
     /**
      * @template T
+     *
      * @param  callable(Tx): T  $fn
      * @return T
      */
@@ -57,6 +60,7 @@ final class Db
      * Trusted server work (row-level security bypassed). Callers authorize first.
      *
      * @template T
+     *
      * @param  callable(Tx): T  $fn
      * @return T
      */
@@ -69,6 +73,41 @@ final class Db
 
             return $fn(new Tx($pdo));
         });
+    }
+
+    /**
+     * The authentication tables (sessions, credentials, link tokens, two-step
+     * secrets, rate limits) as role onehealth_auth, which can touch those
+     * tables and nothing else. Only App\Auth uses this.
+     *
+     * @template T
+     *
+     * @param  callable(Tx): T  $fn
+     * @return T
+     */
+    public function withAuthContext(callable $fn): mixed
+    {
+        return $this->transaction(function (PDO $pdo) use ($fn) {
+            $pdo->exec('SET LOCAL ROLE onehealth_auth');
+            $pdo->exec("select set_config('app.user_id', '', true)");
+
+            return $fn(new Tx($pdo));
+        });
+    }
+
+    /** The database's own message for a failed statement (what RAISE EXCEPTION said), without driver decoration. */
+    public static function errorMessage(Throwable $error): string
+    {
+        $text = $error instanceof \PDOException && is_string($error->errorInfo[2] ?? null) ? $error->errorInfo[2] : $error->getMessage();
+        $text = preg_replace('/^(ERROR|FATAL|PANIC):\s+/', '', $text);
+
+        return preg_split('/\n(DETAIL|HINT|CONTEXT|LINE \d+|QUERY|PL\/pgSQL function)\b/', $text)[0];
+    }
+
+    /** The five-character SQLSTATE of a failed statement, or null. */
+    public static function errorCode(Throwable $error): ?string
+    {
+        return $error instanceof \PDOException && is_string($error->errorInfo[0] ?? null) ? $error->errorInfo[0] : null;
     }
 
     private function transaction(callable $fn): mixed

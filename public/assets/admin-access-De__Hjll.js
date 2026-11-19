@@ -1,0 +1,1 @@
+import{n as e,r as t}from"./server-fn-BpqHIXk4.js";import{u as n}from"./admin.functions-D27JYQjt.js";function r(){let r=e(n),{data:i}=t({queryKey:[`admin-session`],queryFn:()=>r()});return{readOnly:i?.readOnly??!0,superAdmin:i?.superAdmin??!1}}export{r as t};

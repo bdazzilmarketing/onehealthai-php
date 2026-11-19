@@ -1,0 +1,1 @@
+import{t as e}from"./PasswordLinkPage-ChZO38GQ.js";import{r as t}from"./useRouter-DD7zqWob.js";var n=t(),r=()=>(0,n.jsx)(e,{mode:`reset`});export{r as component};

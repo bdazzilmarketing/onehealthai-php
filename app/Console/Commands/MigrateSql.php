@@ -14,7 +14,7 @@ class MigrateSql extends Command
 
     public function handle(): int
     {
-        $url = env('MIGRATION_DATABASE_URL');
+        $url = config('onehealth.env.MIGRATION_DATABASE_URL');
         if (! $url) {
             $this->error('MIGRATION_DATABASE_URL is required (the migration login, not the runtime login).');
 

@@ -2,6 +2,7 @@
 
 namespace App\Database;
 
+use App\Support\Js;
 use PDO;
 
 /**
@@ -24,6 +25,48 @@ final class Tx
         $row = $this->run($sql, $params)->fetch(PDO::FETCH_ASSOC);
 
         return $row === false ? null : $row;
+    }
+
+    /**
+     * Rows shaped as the original application returned them to the browser:
+     * numeric and float columns as numbers, timestamps as ISO text with a
+     * colon in the offset, JSON columns decoded (objects stay objects).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rows(string $sql, array $params = []): array
+    {
+        $statement = $this->run($sql, $params);
+        $kinds = [];
+        for ($i = 0, $count = $statement->columnCount(); $i < $count; $i++) {
+            $meta = $statement->getColumnMeta($i);
+            $kind = match ($meta['pgsql:oid'] ?? 0) {
+                1700, 700, 701, 20 => 'number',
+                1114, 1184 => 'time',
+                114, 3802 => 'json',
+                default => null,
+            };
+            if ($kind !== null) {
+                $kinds[$meta['name']] = $kind;
+            }
+        }
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if ($kinds !== []) {
+            foreach ($rows as &$row) {
+                foreach ($kinds as $name => $kind) {
+                    if ($row[$name] !== null) {
+                        $row[$name] = match ($kind) {
+                            'number' => is_int($row[$name]) ? $row[$name] : Js::toNumber((string) $row[$name]),
+                            'time' => preg_replace('/([+-]\d\d)$/', '$1:00', preg_replace('/ /', 'T', $row[$name], 1)),
+                            'json' => json_decode($row[$name], false, 512, JSON_THROW_ON_ERROR),
+                        };
+                    }
+                }
+            }
+            unset($row);
+        }
+
+        return $rows;
     }
 
     public function value(string $sql, array $params = []): mixed
@@ -49,7 +92,7 @@ final class Tx
                 is_int($value) => PDO::PARAM_INT,
                 default => PDO::PARAM_STR,
             };
-            $statement->bindValue($index + 1, is_float($value) ? (string) $value : $value, $type);
+            $statement->bindValue($index + 1, is_float($value) ? Js::number($value) : $value, $type);
         }
         $statement->execute();
 
